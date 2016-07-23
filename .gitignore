@@ -7,3 +7,4 @@ Release
 foobar2000
 ipch
 package
+*.db

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -32,12 +32,14 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -50,7 +52,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>..\libspotify\include;..\foobar-sdk\foobar2000\sdk;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include</IncludePath>
+    <IncludePath>..\libspotify\include;..\foobar-sdk\foobar2000\sdk;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Include</IncludePath>
     <OutDir>..\foobar2000\user-components\$(TargetName)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -61,10 +63,12 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Windows Kits\10\Include\10.0.10150.0\ucrt</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\foobar-sdk\foobar2000\shared\shared.lib;..\foobar-sdk\foobar2000\SDK\$(Configuration)\foobar2000_sdk.lib;..\foobar-sdk\foobar2000\foobar2000_component_client\$(Configuration)\foobar2000_component_client.lib;..\$(Configuration)\pfc.lib;..\libspotify\lib\spotify.lib;credui.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\foobar-sdk\foobar2000\shared\shared.lib;..\foobar-sdk\foobar2000\SDK\$(Configuration)\foobar2000_sdk.lib;..\foobar-sdk\foobar2000\foobar2000_component_client\$(Configuration)\foobar2000_component_client.lib;..\$(Configuration)\pfc.lib;..\libspotify\lib\libspotify.lib;credui.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
@@ -74,12 +78,14 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Include;C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>..\foobar-sdk\foobar2000\shared\shared.lib;..\foobar-sdk\foobar2000\SDK\$(Configuration)\foobar2000_sdk.lib;..\foobar-sdk\foobar2000\foobar2000_component_client\$(Configuration)\foobar2000_component_client.lib;..\$(Configuration)\pfc.lib;..\libspotify\lib\spotify.lib;credui.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\foobar-sdk\foobar2000\shared\shared.lib;..\foobar-sdk\foobar2000\SDK\$(Configuration)\foobar2000_sdk.lib;..\foobar-sdk\foobar2000\foobar2000_component_client\$(Configuration)\foobar2000_component_client.lib;..\$(Configuration)\pfc.lib;..\libspotify\lib\libspotify.lib;credui.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>

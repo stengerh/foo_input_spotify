@@ -26,6 +26,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{02F13FAE-C9D9-4C70-A691-582C3B49B15C}</ProjectGuid>
     <RootNamespace>foo_input_spotify</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -52,11 +53,11 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>..\libspotify\include;..\foobar-sdk\foobar2000\sdk;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Include</IncludePath>
+    <IncludePath>$(SolutionDir)libspotify\include;$(SolutionDir)\foobar-sdk\foobar2000\sdk;$(IncludePath)</IncludePath>
     <OutDir>..\foobar2000\user-components\$(TargetName)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>..\libspotify\include;..\foobar-sdk\foobar2000\sdk;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include</IncludePath>
+    <IncludePath>$(SolutionDir)libspotify\include;$(SolutionDir)\foobar-sdk\foobar2000\sdk;$(IncludePath)</IncludePath>
     <OutDir>..\foobar2000\user-components\$(TargetName)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

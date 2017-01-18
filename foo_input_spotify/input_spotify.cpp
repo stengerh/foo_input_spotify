@@ -66,6 +66,14 @@ public:
 		url = p_path;
 
 		sp_session *sess = ss.get(p_abort);
+		switch (sp_session_connectionstate(sess))
+		{
+		case SP_CONNECTION_STATE_LOGGED_IN:
+		case SP_CONNECTION_STATE_OFFLINE:
+			break;
+		default:
+			throw exception_io_denied("could not log in to Spotify");
+		}
 
 		{
 			LockedCS lock(ss.getSpotifyCS());

@@ -206,6 +206,8 @@ BOOL CALLBACK makeSpotifySession(PINIT_ONCE initOnce, PVOID param, PVOID *contex
 			if (SP_ERROR_NO_CREDENTIALS == sp_session_relogin(sess)) {
 				try {
 					std::auto_ptr<CredPromptResult> cpr = credPrompt(msg);
+					if (cpr->cancelled)
+						return FALSE;
 					sp_session_login(sess, cpr->un.data(), cpr->pw.data(), cpr->save, NULL);
 				} catch (std::exception &e) {
 					alert(e.what());

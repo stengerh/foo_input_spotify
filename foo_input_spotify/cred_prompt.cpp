@@ -14,7 +14,6 @@ std::auto_ptr<CredPromptResult> credPrompt(pfc::string8 msg) {
 	WCHAR pszName[CREDUI_MAX_USERNAME_LENGTH + 1];
 	WCHAR pszPwd[CREDUI_MAX_PASSWORD_LENGTH + 1];
 	BOOL fSave;
-	DWORD dwErr;
 
 	cui.cbSize = sizeof(CREDUI_INFO);
 	cui.hwndParent = NULL;
@@ -26,7 +25,7 @@ std::auto_ptr<CredPromptResult> credPrompt(pfc::string8 msg) {
 	fSave = FALSE;
 	SecureZeroMemory(pszName, sizeof(pszName));
 	SecureZeroMemory(pszPwd, sizeof(pszPwd));
-	dwErr = CredUIPromptForCredentialsW(
+	const DWORD dwErr = CredUIPromptForCredentialsW(
 		&cui,                         // CREDUI_INFO structure
 		TEXT("foo_input_spotify"),            // Target for credentials
 		NULL,                         // Reserved
@@ -40,15 +39,18 @@ std::auto_ptr<CredPromptResult> credPrompt(pfc::string8 msg) {
 		CREDUI_FLAGS_ALWAYS_SHOW_UI |
 		CREDUI_FLAGS_DO_NOT_PERSIST);
 
-	if (!dwErr)
+	if (dwErr == NO_ERROR)
 	{
-
 		pfc::stringcvt::convert_wide_to_utf8(cpr->un.data(), CRED_BUF_SIZE, pszName, sizeof(pszName));
 		pfc::stringcvt::convert_wide_to_utf8(cpr->pw.data(), CRED_BUF_SIZE, pszPwd, sizeof(pszPwd));
 		cpr->save = true;
 
 		SecureZeroMemory(pszName, sizeof(pszName));
 		SecureZeroMemory(pszPwd, sizeof(pszPwd));
+	}
+	else if (dwErr == ERROR_CANCELLED)
+	{
+		cpr->cancelled = true;
 	}
 	return cpr;
 }

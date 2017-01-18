@@ -6,14 +6,13 @@
 #include <Ntsecapi.h>
 
 std::vector<WCHAR> previousUsername;
-BOOL save = FALSE;
 
 std::auto_ptr<CredPromptResult> credPrompt(pfc::string8 msg) {
 	std::auto_ptr<CredPromptResult> cpr(new CredPromptResult());
 
-	CREDUI_INFO cui;
-	TCHAR pszName[CREDUI_MAX_USERNAME_LENGTH + 1];
-	TCHAR pszPwd[CREDUI_MAX_PASSWORD_LENGTH + 1];
+	CREDUI_INFOW cui;
+	WCHAR pszName[CREDUI_MAX_USERNAME_LENGTH + 1];
+	WCHAR pszPwd[CREDUI_MAX_PASSWORD_LENGTH + 1];
 	BOOL fSave;
 	DWORD dwErr;
 
@@ -21,13 +20,13 @@ std::auto_ptr<CredPromptResult> credPrompt(pfc::string8 msg) {
 	cui.hwndParent = NULL;
 	//  Ensure that MessageText and CaptionText identify what credentials
 	//  to use and which application requires them.
-	cui.pszMessageText = TEXT("Enter your Spotify credentials");
-	cui.pszCaptionText = TEXT("Spotify");
+	cui.pszMessageText = L"Enter your Spotify credentials";
+	cui.pszCaptionText = L"Spotify";
 	cui.hbmBanner = NULL;
 	fSave = FALSE;
 	SecureZeroMemory(pszName, sizeof(pszName));
 	SecureZeroMemory(pszPwd, sizeof(pszPwd));
-	dwErr = CredUIPromptForCredentials(
+	dwErr = CredUIPromptForCredentialsW(
 		&cui,                         // CREDUI_INFO structure
 		TEXT("foo_input_spotify"),            // Target for credentials
 		NULL,                         // Reserved

@@ -4,7 +4,8 @@
 *.vcxproj.user
 Debug
 Release
-foobar2000
+/foobar2000
 ipch
 package
 *.db
+*.opendb

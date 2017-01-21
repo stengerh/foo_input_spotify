@@ -17,8 +17,6 @@ extern "C" {
 	extern const size_t g_appkey_size;
 }
 
-SpotifySession ss;
-
 template <typename T>
 void CALLBACK notifyEvent(T *result, void *userdata) {
 	HANDLE ev = userdata;
@@ -45,9 +43,11 @@ class InputSpotify
 		t.clear();
 	}
 
+	SpotifySession &ss;
+
 public:
 
-	InputSpotify() {
+	InputSpotify() : ss(SpotifySession::instance()) {
 	}
 
 	~InputSpotify() {

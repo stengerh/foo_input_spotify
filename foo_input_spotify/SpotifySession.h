@@ -21,12 +21,14 @@ class SpotifySession {
 	HANDLE processEventsEvent;
 	pfc::string8 loginResult;
 	__declspec(align(2)) volatile PVOID decoderOwner;
-public:
-	Buffer buf;
 
 	SpotifySession();
-
 	~SpotifySession();
+
+public:
+	static SpotifySession & instance();
+
+	Buffer buf;
 
 	sp_session *getAnyway();
 

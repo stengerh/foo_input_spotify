@@ -17,6 +17,13 @@ extern "C" {
 	extern const size_t g_appkey_size;
 }
 
+SpotifySession & SpotifySession::instance()
+{
+	static SpotifySession session;
+
+	return session;
+}
+
 DWORD WINAPI spotifyThread(void *data) {
 	SpotifyThreadData *dat = (SpotifyThreadData*)data;
 

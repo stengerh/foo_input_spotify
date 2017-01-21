@@ -13,23 +13,8 @@
 struct win32exception : std::exception {
 	std::string makeMsg(const std::string &cause, DWORD err) {
 		std::stringstream ss;
-		ss << cause << ", win32: " << err << " (" << std::hex << err << "): ???";
+		ss << cause << ", win32: " << err << " (" << std::hex << err << "): " << format_win32_error(err);
 		return ss.str();
-#if ARGH
-		LPVOID lpMsgBuf;
-		FormatMessage(
-				FORMAT_MESSAGE_ALLOCATE_BUFFER |
-				FORMAT_MESSAGE_FROM_SYSTEM |
-				FORMAT_MESSAGE_IGNORE_INSERTS,
-				NULL,
-				err,
-				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-				(LPTSTR) &lpMsgBuf,
-				0, NULL );
-		LocalFree(lpMsgBuf);
-//		pfc::stringcvt::string_utf8_from_wide((wchar_t*)lpMsgBuf, wcslen((wchar_t*)lpMsgBuf));
-//		WideCharToMultiByte(CP_UTF8, 0, lpMsgBuf, -1, buf.data(), buf.size(), NULL, NULL);
-#endif
 	}
 
 	win32exception(std::string cause) : std::exception(makeMsg(cause, GetLastError()).c_str()) {
@@ -44,6 +29,30 @@ struct Gentry {
     size_t size;
 	int sampleRate;
 	int channels;
+};
+
+struct Event : boost::noncopyable {
+	HANDLE handle;
+
+	Event(BOOL manualReset, BOOL initialState) : handle(NULL) {
+		handle = CreateEvent(NULL, manualReset, initialState, NULL);
+		if (handle == NULL)
+			throw win32exception("failed to create event");
+	}
+
+	~Event() {
+		if (handle != NULL)
+			CloseHandle(handle);
+	}
+
+	HANDLE duplicateHandle() const {
+		SetLastError(ERROR_SUCCESS);
+		HANDLE h = NULL;
+		BOOL result = DuplicateHandle(GetCurrentProcess(), handle, GetCurrentProcess(), &h, 0, FALSE, DUPLICATE_SAME_ACCESS);
+		if (!result)
+			throw win32exception("could not copy event");
+		return h;
+	}
 };
 
 struct CriticalSection : boost::noncopyable {
@@ -70,6 +79,20 @@ struct LockedCS : boost::noncopyable {
 	void dropAndReacquire(DWORD wait = 0) {
 		LeaveCriticalSection(&cs);
 		Sleep(wait);
+		EnterCriticalSection(&cs);
+	}
+
+	bool waitForEvent(Event &ev, abort_callback &abort, DWORD timeoutMillis = INFINITE);
+};
+
+struct UnlockedCS : boost::noncopyable {
+	CRITICAL_SECTION &cs;
+
+	UnlockedCS(const LockedCS &lock) : cs(lock.cs) {
+		LeaveCriticalSection(&cs);
+	}
+
+	~UnlockedCS() {
 		EnterCriticalSection(&cs);
 	}
 };

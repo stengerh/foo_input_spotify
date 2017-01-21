@@ -19,16 +19,11 @@ extern "C" {
 
 SpotifySession ss;
 
-void CALLBACK notifyEvent(sp_albumbrowse *result, void *userdata) {
-	SetEvent(userdata);
-}
-
-void CALLBACK notifyEvent(sp_artistbrowse *result, void *userdata) {
-	SetEvent(userdata);
-}
-
-void CALLBACK notifyEvent(sp_search *result, void *userdata) {
-	SetEvent(userdata);
+template <typename T>
+void CALLBACK notifyEvent(T *result, void *userdata) {
+	HANDLE ev = userdata;
+	SetEvent(ev);
+	CloseHandle(ev);
 }
 
 class InputSpotify
@@ -87,16 +82,13 @@ public:
 			switch(sp_link_type(link)) {
 				case SP_LINKTYPE_ALBUM: {
 					sp_album *album = sp_link_as_album(link);
-					HANDLE ev = CreateEvent(NULL, FALSE, FALSE, NULL);
-					sp_albumbrowse *browse = sp_albumbrowse_create(sess, album, &notifyEvent, ev);
-					while (WAIT_OBJECT_0 != WaitForSingleObject(ev, 200)) {
-						lock.dropAndReacquire(20);
-						if (p_abort.is_aborting()) {
-							CloseHandle(ev);
-							p_abort.check();
-						}
+
+					Event ev(false, false);
+					sp_albumbrowse *browse = sp_albumbrowse_create(sess, album, &notifyEvent, ev.duplicateHandle());
+
+					while (!sp_albumbrowse_is_loaded(browse)) {
+						lock.waitForEvent(ev, p_abort);
 					}
-					CloseHandle(ev);
 
 					const int count = sp_albumbrowse_num_tracks(browse);
 					if (0 == count)
@@ -136,16 +128,13 @@ public:
 
 				case SP_LINKTYPE_ARTIST: {
 					sp_artist *artist = sp_link_as_artist(link);
-					HANDLE ev = CreateEvent(NULL, FALSE, FALSE, NULL);
-					sp_artistbrowse *browse = sp_artistbrowse_create(sess, sp_link_as_artist(link), SP_ARTISTBROWSE_FULL, &notifyEvent, ev);
-					while (WAIT_OBJECT_0 != WaitForSingleObject(ev, 200)) {
-						lock.dropAndReacquire(20);
-						if (p_abort.is_aborting()) {
-							CloseHandle(ev);
-							p_abort.check();
-						}
+
+					Event ev(false, false);
+					sp_artistbrowse *browse = sp_artistbrowse_create(sess, sp_link_as_artist(link), SP_ARTISTBROWSE_FULL, &notifyEvent, ev.duplicateHandle());
+
+					while (!sp_artistbrowse_is_loaded(browse)) {
+						lock.waitForEvent(ev, p_abort);
 					}
-					CloseHandle(ev);
 
 					const int count = sp_artistbrowse_num_tracks(browse);
 					if (0 == count)
@@ -165,17 +154,12 @@ public:
 
 					// spotify:search:
 
-					HANDLE ev = CreateEvent(NULL, FALSE, FALSE, NULL);
-					sp_search *browse = sp_search_create(sess, query.c_str(), 0, 200, 0, 10, 0, 10, 0, 20, SP_SEARCH_SUGGEST, &notifyEvent, ev);
+					Event ev(false, false);
+					sp_search *browse = sp_search_create(sess, query.c_str(), 0, 200, 0, 10, 0, 10, 0, 20, SP_SEARCH_SUGGEST, &notifyEvent, ev.duplicateHandle());
 
-					while (WAIT_OBJECT_0 != WaitForSingleObject(ev, 200)) {
-						lock.dropAndReacquire(20);
-						if (p_abort.is_aborting()) {
-							CloseHandle(ev);
-							p_abort.check();
-						}
+					while (!sp_search_is_loaded(browse)) {
+						lock.waitForEvent(ev, p_abort);
 					}
-					CloseHandle(ev);
 
 					const int count = sp_search_num_tracks(browse);
 					if (0 == count)

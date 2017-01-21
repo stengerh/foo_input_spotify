@@ -1,5 +1,29 @@
 #include "util.h"
 
+bool LockedCS::waitForEvent(Event &ev, abort_callback &abort, DWORD timeoutMillis) {
+	UnlockedCS unlocked(*this);
+
+	HANDLE handles[2] = { ev.handle, abort.get_handle() };
+	SetLastError(ERROR_SUCCESS);
+	DWORD result = WaitForMultipleObjects(2, handles, FALSE, timeoutMillis);
+	switch (result) {
+	case WAIT_TIMEOUT:
+		return false;
+	case WAIT_OBJECT_0:
+		return true;
+	case WAIT_OBJECT_0 + 1:
+		throw exception_aborted();
+	case WAIT_ABANDONED_0:
+		throw win32exception("WAIT_ABANDONED (event handle)");
+	case WAIT_ABANDONED_0 + 1:
+		throw win32exception("WAIT_ABANDONED (abort handle)");
+	case WAIT_FAILED:
+		throw win32exception("WAIT_FAILED");
+	default:
+		throw win32exception("unexpected wait result");
+	}
+}
+
 Buffer::Buffer() : entries(0), ptr(0) {
 	InitializeConditionVariable(&bufferNotEmpty);
 }

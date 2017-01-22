@@ -76,7 +76,6 @@ void CALLBACK play_token_lost(sp_session *sess);
 //BOOL CALLBACK makeSpotifySession(PINIT_ONCE initOnce, PVOID param, PVOID *context);
 
 SpotifySession::SpotifySession() :
-		loginEvent(false, false),
 		threadData(spotifyCS), decoderOwner(NULL) {
 
 	processEventsEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
@@ -233,7 +232,8 @@ void SpotifySession::requireLoggedIn() {
 void SpotifySession::waitForLogin(abort_callback & p_abort) {
 	LockedCS lock(loginCS);
 	while (!loggedIn) {
-		lock.waitForEvent(loginEvent, p_abort);
+		loginCondVar.sleep(loginCS, 100);
+		p_abort.check();
 	}
 }
 
@@ -250,7 +250,8 @@ void SpotifySession::onLoggedIn(sp_error err) {
 			showLoginUI();
 		}
 	}
-	SetEvent(loginEvent.handle);
+
+	loginCondVar.wakeAll();
 }
 
 void SpotifySession::onLoggedOut() {
@@ -258,7 +259,7 @@ void SpotifySession::onLoggedOut() {
 
 	loggedIn = false;
 
-	SetEvent(loginEvent.handle);
+	loginCondVar.wakeAll();
 }
 
 void SpotifySession::processEvents() {

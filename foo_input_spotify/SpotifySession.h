@@ -19,7 +19,7 @@ class SpotifySession {
 	HANDLE processEventsEvent;
 	__declspec(align(2)) volatile PVOID decoderOwner;
 	CriticalSection loginCS;
-	Event loginEvent;
+	ConditionVariable loginCondVar;
 	bool loggingIn;
 	bool loggedIn;
 

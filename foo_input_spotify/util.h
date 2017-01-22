@@ -86,6 +86,42 @@ struct LockedCS : boost::noncopyable {
 	bool waitForEvent(Event &ev, abort_callback &abort, DWORD timeoutMillis = INFINITE);
 };
 
+struct ConditionVariable : boost::noncopyable {
+	CONDITION_VARIABLE var;
+
+	ConditionVariable() {
+		InitializeConditionVariable(&var);
+	}
+
+	~ConditionVariable() {
+	}
+
+	bool sleep(CriticalSection &cs, DWORD timeoutMillis = INFINITE) {
+		SetLastError(ERROR_SUCCESS);
+		BOOL succeeded = SleepConditionVariableCS(&var, &cs.cs, timeoutMillis);
+		if (succeeded == TRUE) {
+			return true;
+		}
+		else {
+			DWORD lastError = GetLastError();
+			if (lastError == ERROR_TIMEOUT) {
+				return false;
+			}
+			else {
+				throw win32exception("unexpected error while waiting for condition variable", lastError);
+			}
+		}
+	}
+
+	void wake() {
+		WakeConditionVariable(&var);
+	}
+
+	void wakeAll() {
+		WakeAllConditionVariable(&var);
+	}
+};
+
 struct UnlockedCS : boost::noncopyable {
 	CRITICAL_SECTION &cs;
 

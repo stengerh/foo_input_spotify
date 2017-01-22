@@ -191,16 +191,28 @@ public:
 		}
 	}
 
+	void meta_add_if_positive(file_info &p_info, const char * p_name, int p_value)
+	{
+		if (p_value > 0) {
+			p_info.meta_add(p_name, pfc::format_int(p_value));
+		}
+	}
+
 	void get_info(t_int32 subsong, file_info & p_info, abort_callback & p_abort )
 	{
 		LockedCS lock(ss.getSpotifyCS());
 		sp_track *tr = t.at(subsong);
 		p_info.set_length(sp_track_duration(tr)/1000.0);
-		p_info.meta_add("ARTIST", sp_artist_name(sp_track_artist(tr, 0)));
+		const int artist_count = sp_track_num_artists(tr);
+		for (int artist_index = 0; artist_index < artist_count; ++artist_index) {
+			p_info.meta_add("ARTIST", sp_artist_name(sp_track_artist(tr, artist_index)));
+		}
+		p_info.meta_add("ALBUM ARTIST", sp_artist_name(sp_album_artist(sp_track_album(tr))));
 		p_info.meta_add("ALBUM", sp_album_name(sp_track_album(tr)));
 		p_info.meta_add("TITLE", sp_track_name(tr));
-		p_info.meta_add("TRACKNUMBER", pfc::format_int(sp_track_index(tr)));
-		p_info.meta_add("DISCNUMBER", pfc::format_int(sp_track_disc(tr)));
+		meta_add_if_positive(p_info, "TRACKNUMBER", sp_track_index(tr));
+		meta_add_if_positive(p_info, "DISCNUMBER", sp_track_disc(tr));
+		meta_add_if_positive(p_info, "DATE", sp_album_year(sp_track_album(tr)));
 	}
 
 	t_filestats get_file_stats( abort_callback & p_abort )

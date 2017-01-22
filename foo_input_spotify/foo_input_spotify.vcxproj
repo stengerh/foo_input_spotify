@@ -11,6 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="album_art_spotify.cpp" />
     <ClCompile Include="cred_prompt.cpp" />
     <ClCompile Include="input_spotify.cpp" />
     <ClCompile Include="key-930.c" />

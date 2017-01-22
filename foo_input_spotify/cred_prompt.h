@@ -20,4 +20,4 @@ struct CredPromptResult : boost::noncopyable {
 	bool cancelled;
 };
 
-std::auto_ptr<CredPromptResult> credPrompt(pfc::string8 msg);
+std::auto_ptr<CredPromptResult> credPrompt(const char * msg);

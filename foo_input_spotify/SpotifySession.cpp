@@ -175,9 +175,9 @@ public:
 	}
 
 	virtual void callback_run() {
-		pfc::string8 msg = "Enter your username and password to connect to Spotify";
+		const char * msg = nullptr;
 		if (lastLoginResult != SP_ERROR_OK) {
-			msg << "\nLogin failed with code " << lastLoginResult;
+			msg = sp_error_message(lastLoginResult);
 		}
 		std::auto_ptr<CredPromptResult> cpr = credPrompt(msg);
 		if (cpr->cancelled) {
@@ -247,7 +247,7 @@ void SpotifySession::onLoggedIn(sp_error err) {
 	else {
 		loggedIn = false;
 		if (loggingIn) {
-			showLoginUI();
+			showLoginUI(err);
 		}
 	}
 

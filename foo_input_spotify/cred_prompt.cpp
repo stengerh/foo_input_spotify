@@ -7,20 +7,28 @@
 
 std::vector<WCHAR> previousUsername;
 
-std::auto_ptr<CredPromptResult> credPrompt(pfc::string8 msg) {
+std::auto_ptr<CredPromptResult> credPrompt(const char * msg) {
 	std::auto_ptr<CredPromptResult> cpr(new CredPromptResult());
 
 	CREDUI_INFOW cui;
+	WCHAR pszMessageText[CREDUI_MAX_MESSAGE_LENGTH];
 	WCHAR pszName[CREDUI_MAX_USERNAME_LENGTH + 1];
 	WCHAR pszPwd[CREDUI_MAX_PASSWORD_LENGTH + 1];
 	BOOL fSave;
+
+	if (msg != nullptr) {
+		wcscpy_s(pszMessageText, pfc::stringcvt::string_wide_from_utf8(msg));
+	}
+	else {
+		wcscpy_s(pszMessageText, L"Please enter your Spotify username and password.");
+	}
 
 	cui.cbSize = sizeof(CREDUI_INFO);
 	cui.hwndParent = core_api::get_main_window();
 	//  Ensure that MessageText and CaptionText identify what credentials
 	//  to use and which application requires them.
-	cui.pszMessageText = L"Enter your Spotify credentials";
-	cui.pszCaptionText = L"Spotify";
+	cui.pszMessageText = pszMessageText;
+	cui.pszCaptionText = L"Sign in to Spotify";
 	cui.hbmBanner = NULL;
 	fSave = FALSE;
 	SecureZeroMemory(pszName, sizeof(pszName));

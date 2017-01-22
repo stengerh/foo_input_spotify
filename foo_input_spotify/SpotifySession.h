@@ -13,14 +13,15 @@ struct SpotifyThreadData {
 };
 
 class SpotifySession {
-	INIT_ONCE initOnce;
 	sp_session *sp;
-	HANDLE loggedInEvent;
 	SpotifyThreadData threadData;
 	CriticalSection spotifyCS;
 	HANDLE processEventsEvent;
-	pfc::string8 loginResult;
 	__declspec(align(2)) volatile PVOID decoderOwner;
+	CriticalSection loginCS;
+	Event loginEvent;
+	bool loggingIn;
+	bool loggedIn;
 
 	SpotifySession();
 	~SpotifySession();
@@ -36,9 +37,12 @@ public:
 
 	CriticalSection &getSpotifyCS();
 
-	pfc::string8 waitForLogin(abort_callback & p_abort);
+	void showLoginUI(sp_error last_login_result = SP_ERROR_OK);
+	void requireLoggedIn();
+	void waitForLogin(abort_callback & p_abort);
 
-	void loggedIn(sp_error err);
+	void onLoggedIn(sp_error err);
+	void onLoggedOut();
 
 	void processEvents();
 

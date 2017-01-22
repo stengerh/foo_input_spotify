@@ -16,7 +16,7 @@ std::auto_ptr<CredPromptResult> credPrompt(pfc::string8 msg) {
 	BOOL fSave;
 
 	cui.cbSize = sizeof(CREDUI_INFO);
-	cui.hwndParent = NULL;
+	cui.hwndParent = core_api::get_main_window();
 	//  Ensure that MessageText and CaptionText identify what credentials
 	//  to use and which application requires them.
 	cui.pszMessageText = L"Enter your Spotify credentials";
@@ -43,7 +43,7 @@ std::auto_ptr<CredPromptResult> credPrompt(pfc::string8 msg) {
 	{
 		pfc::stringcvt::convert_wide_to_utf8(cpr->un.data(), CRED_BUF_SIZE, pszName, sizeof(pszName));
 		pfc::stringcvt::convert_wide_to_utf8(cpr->pw.data(), CRED_BUF_SIZE, pszPwd, sizeof(pszPwd));
-		cpr->save = true;
+		cpr->save = (fSave != FALSE);
 
 		SecureZeroMemory(pszName, sizeof(pszName));
 		SecureZeroMemory(pszPwd, sizeof(pszPwd));

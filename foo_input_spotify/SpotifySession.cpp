@@ -29,9 +29,14 @@ DWORD WINAPI spotifyThread(void *data) {
 
 	int nextTimeout = INFINITE;
 	while (true) {
-		WaitForSingleObject(dat->processEventsEvent, nextTimeout);
-		LockedCS lock(dat->cs);
-		sp_session_process_events(dat->sess, &nextTimeout);
+		DWORD result = WaitForSingleObject(dat->processEventsEvent, nextTimeout);
+		switch (result) {
+		case WAIT_OBJECT_0:
+		{
+			LockedCS lock(dat->cs);
+			sp_session_process_events(dat->sess, &nextTimeout);
+		}
+		}
 	}
 }
 
@@ -68,18 +73,14 @@ int CALLBACK music_delivery(sp_session *sess, const sp_audioformat *format, cons
 void CALLBACK end_of_track(sp_session *sess);
 void CALLBACK play_token_lost(sp_session *sess);
 
-BOOL CALLBACK makeSpotifySession(PINIT_ONCE initOnce, PVOID param, PVOID *context);
+//BOOL CALLBACK makeSpotifySession(PINIT_ONCE initOnce, PVOID param, PVOID *context);
 
 SpotifySession::SpotifySession() :
-		loggedInEvent(CreateEvent(NULL, FALSE, FALSE, NULL)),
+		loginEvent(false, false),
 		threadData(spotifyCS), decoderOwner(NULL) {
 
 	processEventsEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-
-	threadData.processEventsEvent = processEventsEvent;
-	threadData.sess = getAnyway();
-
-	memset(&initOnce, 0, sizeof(INIT_ONCE));
+	loggingIn = false;
 
 	static sp_session_callbacks session_callbacks = {};
 	static sp_session_config spconfig = {};
@@ -120,19 +121,21 @@ SpotifySession::SpotifySession() :
 	{
 		LockedCS lock(spotifyCS);
 
-		SetLastError(ERROR_SUCCESS);
-		HANDLE thread = CreateThread(NULL, 0, &spotifyThread, &threadData, 0, NULL);
-		if (NULL == thread) {
-			throw win32exception("Couldn't create thread");
-		}
-		CloseHandle(thread);
-
 		assertSucceeds("creating session", sp_session_create(&spconfig, &sp));
 	}
+
+	threadData.processEventsEvent = processEventsEvent;
+	threadData.sess = sp;
+
+	SetLastError(ERROR_SUCCESS);
+	const HANDLE thread = CreateThread(NULL, 0, &spotifyThread, &threadData, 0, NULL);
+	if (NULL == thread) {
+		throw win32exception("Couldn't create thread");
+	}
+	CloseHandle(thread);
 }
 
 SpotifySession::~SpotifySession() {
-	CloseHandle(loggedInEvent);
 	CloseHandle(processEventsEvent);
 }
 
@@ -147,11 +150,8 @@ struct SpotifySessionData {
 };
 
 sp_session *SpotifySession::get(abort_callback & p_abort) {
-	SpotifySessionData ssd(p_abort, this);
-	InitOnceExecuteOnce(&initOnce,
-		makeSpotifySession,
-		&ssd,
-		NULL);
+	requireLoggedIn();
+	waitForLogin(p_abort);
 	return getAnyway();
 }
 
@@ -159,22 +159,106 @@ CriticalSection &SpotifySession::getSpotifyCS() {
 	return spotifyCS;
 }
 
-/** Does /not/ throw exception_io_data, unlike normal */
-pfc::string8 SpotifySession::waitForLogin(abort_callback & p_abort) {
-	while (WAIT_OBJECT_0 != WaitForSingleObject(loggedInEvent, 200))
-		if (p_abort.is_aborting())
-			return "user aborted";
-	return loginResult;
+class main_thread_callback_spotify_login : public main_thread_callback {
+private:
+	sp_session * const session;
+	CriticalSection * cs;
+	bool * const loggingIn;
+	const sp_error lastLoginResult;
+
+public:
+	main_thread_callback_spotify_login(sp_session *session, CriticalSection * cs, bool * loggingIn, sp_error lastLoginResult)
+		: session(session)
+		, cs(cs)
+		, loggingIn(loggingIn)
+		, lastLoginResult(lastLoginResult)
+	{
+	}
+
+	virtual void callback_run() {
+		pfc::string8 msg = "Enter your username and password to connect to Spotify";
+		if (lastLoginResult != SP_ERROR_OK) {
+			msg << "\nLogin failed with code " << lastLoginResult;
+		}
+		std::auto_ptr<CredPromptResult> cpr = credPrompt(msg);
+		if (cpr->cancelled) {
+			LockedCS lock(*cs);
+			*loggingIn = false;
+		}
+		else {
+			LockedCS lock(SpotifySession::instance().getSpotifyCS());
+			sp_error loginResult = sp_session_login(session, cpr->un.data(), cpr->pw.data(), /*remember_me*/ false, /*blob*/ nullptr);
+		}
+	}
+};
+
+void SpotifySession::showLoginUI(sp_error last_login_result) {
+	service_ptr_t<main_thread_callback_spotify_login> callback = new service_impl_t<main_thread_callback_spotify_login>(getAnyway(), &loginCS, &loggingIn, last_login_result);
+	callback->callback_enqueue();
+
+	loggingIn = true;
 }
 
-void SpotifySession::loggedIn(sp_error err) {
-	if (SP_ERROR_OK == err)
-		loginResult = "";
-	else {
-		pfc::string8 msg = "logging in";
-		loginResult = doctor(msg, err);
+void SpotifySession::requireLoggedIn() {
+	LockedCS lock(getSpotifyCS());
+
+	sp_session * session = getAnyway();
+
+	sp_connectionstate state = sp_session_connectionstate(session);
+	switch (state) {
+	case SP_CONNECTION_STATE_LOGGED_IN:
+	case SP_CONNECTION_STATE_OFFLINE:
+		break;
+
+	case SP_CONNECTION_STATE_LOGGED_OUT:
+	case SP_CONNECTION_STATE_UNDEFINED:
+	case SP_CONNECTION_STATE_DISCONNECTED:
+	{
+		sp_error reloginResult = sp_session_relogin(session);
+		switch (reloginResult) {
+		case SP_ERROR_OK:
+			break;
+		case SP_ERROR_NO_CREDENTIALS:
+			if (!loggingIn) {
+				showLoginUI();
+			}
+			break;
+		default:
+			break;
+		}
 	}
-	SetEvent(loggedInEvent);
+	}
+}
+
+void SpotifySession::waitForLogin(abort_callback & p_abort) {
+	LockedCS lock(loginCS);
+	while (!loggedIn) {
+		lock.waitForEvent(loginEvent, p_abort);
+	}
+}
+
+void SpotifySession::onLoggedIn(sp_error err) {
+	LockedCS lock(loginCS);
+
+	if (SP_ERROR_OK == err) {
+		loggingIn = false;
+		loggedIn = true;
+	}
+	else {
+		loggedIn = false;
+		if (loggingIn) {
+			showLoginUI();
+		}
+	}
+	SetEvent(loginEvent.handle);
+}
+
+void SpotifySession::onLoggedOut() {
+	LockedCS lock(loginCS);
+
+	loggedIn = false;
+
+	SetEvent(loginEvent.handle);
 }
 
 void SpotifySession::processEvents() {
@@ -204,61 +288,39 @@ void SpotifySession::releaseDecoder(void *owner) {
 	InterlockedCompareExchangePointer(&decoderOwner, NULL, owner);
 }
 
-BOOL CALLBACK makeSpotifySession(PINIT_ONCE initOnce, PVOID param, PVOID *context) {
-	SpotifySessionData *ssd = static_cast<SpotifySessionData *>(param);
-	SpotifySession *ss = ssd->ss;
-	sp_session *sess = ss->getAnyway();
-	pfc::string8 msg = "Enter your username and password to connect to Spotify";
-
-	while (true) {
-		{
-			LockedCS lock(ss->getSpotifyCS());
-			if (SP_ERROR_NO_CREDENTIALS == sp_session_relogin(sess)) {
-				try {
-					std::auto_ptr<CredPromptResult> cpr = credPrompt(msg);
-					if (cpr->cancelled)
-						return FALSE;
-					sp_session_login(sess, cpr->un.data(), cpr->pw.data(), cpr->save, NULL);
-				} catch (std::exception &e) {
-					alert(e.what());
-					return FALSE;
-				}
-			}
-		}
-		msg = ss->waitForLogin(ssd->p_abort);
-		if (msg.is_empty())
-			return TRUE;
-	}
-}
-
 /** sp_session_userdata is assumed to be thread safe. */
 SpotifySession *from(sp_session *sess) {
 	return static_cast<SpotifySession *>(sp_session_userdata(sess));
 }
 
-void CALLBACK log_message(sp_session *sess, const char *error) {
+void SP_CALLCONV log_message(sp_session *sess, const char *error) {
 	console::formatter() << "spotify log: " << error;
 }
 
-void CALLBACK message_to_user(sp_session *sess, const char *message) {
+void SP_CALLCONV message_to_user(sp_session *sess, const char *message) {
 	alert(message);
 }
 
-void CALLBACK start_playback(sp_session *sess) {
+void SP_CALLCONV start_playback(sp_session *sess) {
 	return;
 }
 
-void CALLBACK logged_in(sp_session *sess, sp_error error)
+void SP_CALLCONV logged_in(sp_session *sess, sp_error error)
 {
-	from(sess)->loggedIn(error);
+	from(sess)->onLoggedIn(error);
 }
 
-void CALLBACK notify_main_thread(sp_session *sess)
+void SP_CALLCONV logged_out(sp_session *sess)
+{
+	from(sess)->onLoggedOut();
+}
+
+void SP_CALLCONV notify_main_thread(sp_session *sess)
 {
     from(sess)->processEvents();
 }
 
-int CALLBACK music_delivery(sp_session *sess, const sp_audioformat *format,
+int SP_CALLCONV music_delivery(sp_session *sess, const sp_audioformat *format,
                           const void *frames, int num_frames)
 {
 	if (num_frames == 0) {
@@ -280,12 +342,12 @@ int CALLBACK music_delivery(sp_session *sess, const sp_audioformat *format,
 	return num_frames;
 }
 
-void CALLBACK end_of_track(sp_session *sess)
+void SP_CALLCONV end_of_track(sp_session *sess)
 {
 	from(sess)->buf.add(NULL, 0, 0, 0);
 }
 
-void CALLBACK play_token_lost(sp_session *sess)
+void SP_CALLCONV play_token_lost(sp_session *sess)
 {
 	alert("play token lost (someone's using your account elsewhere)");
 }

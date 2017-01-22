@@ -1,4 +1,17 @@
 version: 0.0.4.{build}
+configuration: Release
 build:
   project: foo_input_spotify.sln
   verbosity: minimal
+before_package:
+- cmd: >-
+    cd %configuration%
+
+    7z a -tzip foo_input_spotify.fb2k-component *.dll
+
+    7z a foo_input_spotify-pdb.7z *.pdb
+artifacts:
+- path: $(configuration)/foo_input_spotify.fb2k-component
+  name: foo_input_spotify
+- path: $(configuration)/foo_input_spotify-pdb.7z
+  name: foo_input_spotify-pdb

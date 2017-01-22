@@ -1,0 +1,4 @@
+version: 0.0.4.{build}
+build:
+  project: foo_input_spotify.sln
+  verbosity: minimal

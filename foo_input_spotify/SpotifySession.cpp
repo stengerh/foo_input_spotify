@@ -120,9 +120,12 @@ SpotifySession::SpotifySession() :
 	{
 		LockedCS lock(spotifyCS);
 
-		if (NULL == CreateThread(NULL, 0, &spotifyThread, &threadData, 0, NULL)) {
-			throw pfc::exception("Couldn't create thread");
+		SetLastError(ERROR_SUCCESS);
+		HANDLE thread = CreateThread(NULL, 0, &spotifyThread, &threadData, 0, NULL);
+		if (NULL == thread) {
+			throw win32exception("Couldn't create thread");
 		}
+		CloseHandle(thread);
 
 		assertSucceeds("creating session", sp_session_create(&spconfig, &sp));
 	}

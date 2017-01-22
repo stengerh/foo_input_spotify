@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "SpotifySession.h"
+#include "SpotifyPlusPlus.h"
 
 extern "C" {
 	extern const uint8_t g_appkey[];
@@ -29,8 +30,8 @@ class InputSpotify
 	t_filestats m_stats;
 
 	std::string url;
-	std::vector<sp_track *> t;
-	typedef std::vector<sp_track *>::iterator tr_iter;
+	std::vector<SpotifyTrackPtr> t;
+	typedef std::vector<SpotifyTrackPtr>::iterator tr_iter;
 
 	int channels;
 	int sampleRate;
@@ -38,8 +39,6 @@ class InputSpotify
 #define FOR_TRACKS() for (tr_iter it = t.begin(); it != t.end(); ++it)
 
 	void freeTracks() {
-		FOR_TRACKS()
-			sp_track_release(*it);
 		t.clear();
 	}
 
@@ -73,18 +72,19 @@ public:
 		{
 			LockedCS lock(ss.getSpotifyCS());
 
-			sp_link *link = sp_link_create_from_string(p_path);
-			if (NULL == link)
+			SpotifyLinkPtr link;
+			link.Attach(sp_link_create_from_string(p_path));
+			if (!link)
 				throw exception_io_data("couldn't parse url");
 
 			freeTracks();
 
 			switch(sp_link_type(link)) {
 				case SP_LINKTYPE_ALBUM: {
-					sp_album *album = sp_link_as_album(link);
+					SpotifyAlbumPtr album = sp_link_as_album(link);
 
 					Event ev(false, false);
-					sp_albumbrowse *browse = sp_albumbrowse_create(sess, album, &notifyEvent, ev.duplicateHandle());
+					SpotifyAlbumBrowsePtr browse = sp_albumbrowse_create(sess, album, &notifyEvent, ev.duplicateHandle());
 
 					while (!sp_albumbrowse_is_loaded(browse)) {
 						lock.waitForEvent(ev, p_abort);
@@ -95,42 +95,33 @@ public:
 						throw exception_io_data("empty (or failed to load?) album");
 
 					for (int i = 0; i < count; ++i) {
-						sp_track *track = sp_albumbrowse_track(browse, i);
-						sp_track_add_ref(track);
+						SpotifyTrackPtr track = sp_albumbrowse_track(browse, i);
 						t.push_back(track);
 					}
-					sp_albumbrowse_release(browse);
 				} break;
 
 				case SP_LINKTYPE_PLAYLIST: {
-					sp_playlist *playlist = sp_playlist_create(sess, link);
-					int count;
+					SpotifyPlaylistPtr playlist;
+					playlist.Attach(sp_playlist_create(sess, link));
 
-					for (int retries = 0; retries < 50; ++retries) {
-						count = sp_playlist_num_tracks(playlist);
-						if (0 != count)
-							break;
+					SpotifyAwaitLoaded(playlist.m_ptr, lock, p_abort);
 
-						lock.dropAndReacquire(100);
-						p_abort.check();
-					}
-
+					int count = sp_playlist_num_tracks(playlist);
 					if (0 == count)
 						throw exception_io_data("empty (or failed to load?) playlist");
 
 					for (int i = 0; i < count; ++i) {
-						sp_track *track = sp_playlist_track(playlist, i);
-						sp_track_add_ref(track); // or the playlist will free it
+						SpotifyTrackPtr track = sp_playlist_track(playlist, i);
 						t.push_back(track);
 					}
-					sp_playlist_release(playlist);
 				} break;
 
 				case SP_LINKTYPE_ARTIST: {
-					sp_artist *artist = sp_link_as_artist(link);
+					SpotifyArtistPtr artist = sp_link_as_artist(link);
 
 					Event ev(false, false);
-					sp_artistbrowse *browse = sp_artistbrowse_create(sess, sp_link_as_artist(link), SP_ARTISTBROWSE_FULL, &notifyEvent, ev.duplicateHandle());
+					SpotifyArtistBrowsePtr browse;
+					browse.Attach(sp_artistbrowse_create(sess, sp_link_as_artist(link), SP_ARTISTBROWSE_FULL, &notifyEvent, ev.duplicateHandle()));
 
 					while (!sp_artistbrowse_is_loaded(browse)) {
 						lock.waitForEvent(ev, p_abort);
@@ -141,11 +132,9 @@ public:
 						throw exception_io_data("empty (or failed to load?) artist");
 
 					for (int i = 0; i < count; ++i) {
-						sp_track *track = sp_artistbrowse_track(browse, i);
-						sp_track_add_ref(track);
+						SpotifyTrackPtr track = sp_artistbrowse_track(browse, i);
 						t.push_back(track);
 					}
-					sp_artistbrowse_release(browse);
 				} break;
 
 				case SP_LINKTYPE_SEARCH: {
@@ -155,7 +144,8 @@ public:
 					// spotify:search:
 
 					Event ev(false, false);
-					sp_search *browse = sp_search_create(sess, query.c_str(), 0, 200, 0, 10, 0, 10, 0, 20, SP_SEARCH_SUGGEST, &notifyEvent, ev.duplicateHandle());
+					SpotifySearchPtr browse;
+					browse.Attach(sp_search_create(sess, query.c_str(), 0, 200, 0, 10, 0, 10, 0, 20, SP_SEARCH_SUGGEST, &notifyEvent, ev.duplicateHandle()));
 
 					while (!sp_search_is_loaded(browse)) {
 						lock.waitForEvent(ev, p_abort);
@@ -166,24 +156,19 @@ public:
 						throw exception_io_data("empty (or failed to load?) search");
 
 					for (int i = 0; i < count; ++i) {
-						sp_track *track = sp_search_track(browse, i);
-						sp_track_add_ref(track);
+						SpotifyTrackPtr track = sp_search_track(browse, i);
 						t.push_back(track);
 					}
-					sp_search_release(browse);
 				} break;
 
 				case SP_LINKTYPE_TRACK: {
-					sp_track *ptr = sp_link_as_track(link);
-					sp_track_add_ref(ptr);
+					SpotifyTrackPtr ptr = sp_link_as_track(link);
 					t.push_back(ptr);
 				} break;
 
 				default:
-					sp_link_release(link);
 					throw exception_io_data("Only artist, track, playlist and album URIs are supported");
 			}
-			sp_link_release(link);
 		}
 
 		while (true) {

@@ -20,6 +20,7 @@
   <ItemGroup>
     <ClInclude Include="boost\noncopyable.hpp" />
     <ClInclude Include="cred_prompt.h" />
+    <ClInclude Include="SpotifyPlusPlus.h" />
     <ClInclude Include="SpotifySession.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>

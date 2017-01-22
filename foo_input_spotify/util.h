@@ -82,6 +82,7 @@ struct LockedCS : boost::noncopyable {
 		EnterCriticalSection(&cs);
 	}
 
+	void wait(abort_callback &abort, DWORD timeoutMillis);
 	bool waitForEvent(Event &ev, abort_callback &abort, DWORD timeoutMillis = INFINITE);
 };
 

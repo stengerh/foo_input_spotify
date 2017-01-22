@@ -44,5 +44,8 @@
     <ClInclude Include="cred_prompt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SpotifyPlusPlus.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

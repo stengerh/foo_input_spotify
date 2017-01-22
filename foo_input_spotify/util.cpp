@@ -1,5 +1,24 @@
 #include "util.h"
 
+void LockedCS::wait(abort_callback &abort, DWORD timeoutMillis) {
+	UnlockedCS unlocked(*this);
+
+	SetLastError(ERROR_SUCCESS);
+	DWORD result = WaitForSingleObject(abort.get_handle(), timeoutMillis);
+	switch (result) {
+	case WAIT_TIMEOUT:
+		break;
+	case WAIT_OBJECT_0:
+		throw exception_aborted();
+	case WAIT_ABANDONED_0:
+		throw win32exception("WAIT_ABANDONED (abort handle)");
+	case WAIT_FAILED:
+		throw win32exception("WAIT_FAILED");
+	default:
+		throw win32exception("unexpected wait result");
+	}
+}
+
 bool LockedCS::waitForEvent(Event &ev, abort_callback &abort, DWORD timeoutMillis) {
 	UnlockedCS unlocked(*this);
 

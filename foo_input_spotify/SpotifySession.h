@@ -12,12 +12,22 @@ struct SpotifyThreadData {
 	sp_session *sess;
 };
 
+#if defined(_MSC_VER)
+#if _MSC_VER < 1900
+#define POINTER_ALIGN __declspec(align(__alignof(PVOID)))
+#else
+#define POINTER_ALIGN alignas(alignof(PVOID))
+#endif
+#else
+#error PORTME
+#endif
+
 class SpotifySession {
 	sp_session *sp;
 	SpotifyThreadData threadData;
 	CriticalSection spotifyCS;
 	HANDLE processEventsEvent;
-	__declspec(align(2)) volatile PVOID decoderOwner;
+	POINTER_ALIGN volatile PVOID decoderOwner;
 	CriticalSection loginCS;
 	ConditionVariable loginCondVar;
 	bool loggingIn;

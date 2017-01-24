@@ -56,7 +56,7 @@ public:
 
 	void open( service_ptr_t<file> m_file, const char * p_path, t_input_open_reason p_reason, abort_callback & p_abort )
 	{
-		if ( p_reason == input_open_info_write ) throw exception_io_data();
+		if ( p_reason == input_open_info_write ) throw exception_io_denied_readonly();
 		url = p_path;
 
 		sp_session *sess = ss.get(p_abort);
@@ -222,6 +222,9 @@ public:
 
 	void decode_initialize(t_int32 subsong, unsigned p_flags, abort_callback & p_abort )
 	{
+		if ((p_flags & input_flag_playback) == 0)
+			throw exception_io_denied();
+
 		ss.takeDecoder(this);
 
 		ss.buf.flush();

@@ -7,6 +7,8 @@ before_package:
 - cmd: >-
     cd %configuration%
 
+    cp ..\libspotify\lib\libspotify.dll .
+
     7z a -tzip foo_input_spotify.fb2k-component *.dll
 
     7z a foo_input_spotify-pdb.7z *.pdb

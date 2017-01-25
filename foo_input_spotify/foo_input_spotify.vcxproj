@@ -14,15 +14,24 @@
     <ClCompile Include="album_art_spotify.cpp" />
     <ClCompile Include="cred_prompt.cpp" />
     <ClCompile Include="input_spotify.cpp" />
-    <ClCompile Include="key-930.c" />
+    <ClCompile Include="key-930.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="SpotifySession.cpp" />
     <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="boost\noncopyable.hpp" />
     <ClInclude Include="cred_prompt.h" />
+    <ClInclude Include="pch.h" />
     <ClInclude Include="SpotifyPlusPlus.h" />
     <ClInclude Include="SpotifySession.h" />
+    <ClInclude Include="targetver.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
@@ -78,6 +87,8 @@
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>C:\Program Files (x86)\Windows Kits\10\Include\10.0.10150.0\ucrt</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -93,6 +104,8 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <AdditionalIncludeDirectories>C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Include;C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

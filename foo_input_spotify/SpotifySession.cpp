@@ -1,7 +1,6 @@
-#include "util.h"
+#include "pch.h"
 
-#include <foobar2000.h>
-#include <libspotify/api.h>
+#include "util.h"
 
 #include <shlobj.h>
 

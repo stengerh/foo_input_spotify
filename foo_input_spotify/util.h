@@ -2,13 +2,9 @@
 
 #define MYVERSION "0.0.4"
 
-#define _WIN32_WINNT 0x0600
-
-#include <windows.h>
 #include "boost/noncopyable.hpp"
 #include <string>
 #include <sstream>
-#include <foobar2000.h>
 
 struct win32exception : std::exception {
 	std::string makeMsg(const std::string &cause, DWORD err) {

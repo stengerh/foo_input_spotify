@@ -1,7 +1,8 @@
+#include "pch.h"
+
 #include "util.h"
 #include "cred_prompt.h"
 
-#include <windows.h>
 #include <WinCred.h>
 #include <Ntsecapi.h>
 

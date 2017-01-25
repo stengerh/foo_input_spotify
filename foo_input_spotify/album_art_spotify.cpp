@@ -1,6 +1,6 @@
-#include "util.h"
+#include "pch.h"
 
-#include <foobar2000.h>
+#include "util.h"
 
 #include "SpotifySession.h"
 #include "SpotifyPlusPlus.h"

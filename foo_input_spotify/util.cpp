@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "util.h"
 
 void LockedCS::wait(abort_callback &abort, DWORD timeoutMillis) {

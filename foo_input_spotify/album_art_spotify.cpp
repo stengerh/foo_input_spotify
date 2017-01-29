@@ -30,6 +30,8 @@ public:
 	{
 		if (p_what == album_art_ids::artist)
 		{
+			console::formatter() << "Loading artist image from Spotify";
+
 			SpotifyLockScope lock;
 
 			SpotifyArtistPtr artist = get_artist(lock, p_abort);
@@ -51,6 +53,8 @@ public:
 		}
 		else if (p_what == album_art_ids::cover_front)
 		{
+			console::formatter() << "Loading cover image from Spotify";
+
 			SpotifyLockScope lock;
 
 			SpotifyAlbumPtr album = get_album(lock, p_abort);
@@ -67,6 +71,11 @@ public:
 				}
 			}
 		}
+		else
+		{
+			console::formatter() << "Unsupported image type for Spotify album or track link";
+		}
+
 		throw exception_album_art_not_found();
 	}
 
@@ -186,6 +195,8 @@ public:
 	{
 		if (p_what == album_art_ids::cover_front)
 		{
+			console::formatter() << "Loading cover image from Spotify";
+
 			SpotifyLockScope lock;
 
 			if (!m_playlist)
@@ -201,6 +212,10 @@ public:
 			{
 				return load_image_locked(image_id, lock, p_abort);
 			}
+		}
+		else
+		{
+			console::formatter() << "Unsupported image type for Spotify playlist link";
 		}
 
 		throw exception_album_art_not_found();
@@ -223,6 +238,8 @@ public:
 	//! @param p_filehint Optional; specifies a file interface to use for accessing the specified file; can be null - in that case, the implementation will open and close the file internally.
 	virtual album_art_extractor_instance::ptr open(file_ptr p_filehint, const char * p_path, abort_callback & p_abort)
 	{
+		console::formatter() << "Opening track for loading album art from Spotify: " << p_path;
+
 		sp_session *session = SpotifySession::instance().get(p_abort);
 
 		SpotifyLockScope lock;
@@ -237,24 +254,33 @@ public:
 			switch (sp_link_type(link))
 			{
 			case SP_LINKTYPE_ALBUM:
+				console::formatter() << "Creating album art extractor for Spotify album link";
 				instance = new service_impl_t<album_art_extractor_instance_spotify_album>(sp_link_as_album(link), session);
 				break;
 
 			case SP_LINKTYPE_TRACK:
+				console::formatter() << "Creating album art extractor for Spotify track link";
 				instance = new service_impl_t<album_art_extractor_instance_spotify_track>(sp_link_as_track(link), session);
 				break;
 
 			case SP_LINKTYPE_PLAYLIST:
+				console::formatter() << "Creating album art extractor for Spotify playlist link";
 				instance = new service_impl_t<album_art_extractor_instance_spotify_playlist>(link, session);
 				break;
 
 			default:
+				console::formatter() << "Unsupported type of Spotify link";
 				break;
 			}
+		}
+		else
+		{
+			console::formatter() << "Not a valid Spotify link";
 		}
 
 		if (instance.is_valid())
 		{
+			console::formatter() << "Initializing album art extractor for Spotify link";
 			instance->initialize(lock, p_abort);
 			return instance;
 		}

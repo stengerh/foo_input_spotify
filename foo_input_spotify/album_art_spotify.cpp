@@ -138,6 +138,38 @@ public:
 	}
 };
 
+class album_art_extractor_instance_spotify_artist : public album_art_extractor_instance_spotify
+{
+private:
+	SpotifyArtistPtr m_artist;
+
+public:
+	album_art_extractor_instance_spotify_artist(const SpotifyArtistPtr & artist, sp_session *session)
+		: album_art_extractor_instance_spotify(session)
+		, m_artist(artist)
+	{
+	}
+
+	virtual void initialize(LockedCS &lock, abort_callback &p_abort)
+	{
+		Event ev(false, false);
+		SpotifyArtistBrowsePtr browse;
+		browse.Attach(sp_artistbrowse_create(m_session, m_artist, SP_ARTISTBROWSE_NO_ALBUMS, &notifyEvent, ev.duplicateHandle()));
+
+		lock.waitForEvent(ev, p_abort);
+	}
+
+	virtual SpotifyAlbumPtr get_album(LockedCS & lock, abort_callback & p_abort)
+	{
+		return nullptr;
+	}
+
+	virtual SpotifyArtistPtr get_artist(LockedCS & lock, abort_callback & p_abort)
+	{
+		return m_artist;
+	}
+};
+
 class album_art_extractor_instance_spotify_track : public album_art_extractor_instance_spotify
 {
 private:
@@ -256,6 +288,11 @@ public:
 			case SP_LINKTYPE_ALBUM:
 				console::formatter() << "Creating album art extractor for Spotify album link";
 				instance = new service_impl_t<album_art_extractor_instance_spotify_album>(sp_link_as_album(link), session);
+				break;
+
+			case SP_LINKTYPE_ARTIST:
+				console::formatter() << "Creating album art extractor for Spotify artist link";
+				instance = new service_impl_t<album_art_extractor_instance_spotify_artist>(sp_link_as_artist(link), session);
 				break;
 
 			case SP_LINKTYPE_TRACK:

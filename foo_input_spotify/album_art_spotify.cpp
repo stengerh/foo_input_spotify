@@ -1,7 +1,5 @@
 #include "pch.h"
-
 #include "util.h"
-
 #include "SpotifySession.h"
 #include "SpotifyPlusPlus.h"
 
@@ -162,6 +160,7 @@ public:
 	virtual SpotifyAlbumPtr get_album(LockedCS & lock, abort_callback & p_abort)
 	{
 		return nullptr;
+	
 	}
 
 	virtual SpotifyArtistPtr get_artist(LockedCS & lock, abort_callback & p_abort)
@@ -223,6 +222,22 @@ public:
 	{
 	}
 
+	template <typename F>
+	void in_main_thread(F f)
+	{
+		struct in_main : main_thread_callback
+		{
+			void callback_run() override
+			{
+				f();
+			}
+
+			in_main(F f) : f(f) {}
+			F f;
+		};
+		static_api_ptr_t<main_thread_callback_manager>()->add_callback(new service_impl_t<in_main>(f));
+	}
+
 	virtual album_art_data::ptr query(const GUID & p_what, abort_callback & p_abort)
 	{
 		if (p_what == album_art_ids::cover_front)
@@ -237,10 +252,86 @@ public:
 
 				SpotifyAwaitLoaded(m_playlist.m_ptr, lock, p_abort);
 			}
+			//Size of the playlist from m_playlist
+			int playlistSize = sp_playlist_num_tracks(m_playlist);
+			
+			//Ask main thread for the playlist index of the selected song
+			
+			int playlistIndex = -1;
+			bool isPlaying = false;
+			std::string playingLink;
 
-			byte image_id[20];
+			in_main_thread(
+				[&playlistIndex, playlistSize, &isPlaying, &playingLink]
+			{
+				int indexValue = 0;
 
-			if (sp_playlist_get_image(m_playlist, image_id))
+				static_api_ptr_t<playback_control> playbackControl;
+				static_api_ptr_t<playlist_manager> playlistManager;
+				static_api_ptr_t<ui_selection_manager> uiSelectionManager;
+				
+				metadb_handle_ptr playingTrack;
+				playbackControl->get_now_playing(playingTrack);
+				
+				if (uiSelectionManager->get_selection_type() == contextmenu_item::caller_active_playlist_selection)
+				{
+					pfc::list_t<metadb_handle_ptr> selectedItems;
+					playlistManager->activeplaylist_get_selected_items(selectedItems);
+					if (selectedItems.get_size() <= 0 || selectedItems.get_item(0)->get_location().get_subsong_index() > playlistSize)
+					{
+						playlistIndex = 0;
+					}
+					else
+					{
+						indexValue = selectedItems.get_item(0)->get_location().get_subsong_index();
+						playlistIndex = indexValue;
+					}
+				}
+				else if (playingTrack.get_ptr() != nullptr)
+				{
+					playingLink = playingTrack->get_path();
+					if (playingLink.find("spotify") == 0)
+					{
+						playlistIndex = playingTrack->get_location().get_subsong_index();
+						isPlaying = true;
+					}
+					else
+					{
+						playlistIndex = 0;
+					}
+				}
+				else
+				{
+					playlistIndex = 0;
+				}
+			}
+			);
+			
+			//Shitty way to wait for change in value should use future object
+			while (playlistIndex == -1)
+			{
+				console::formatter() << "";
+			}
+
+			SpotifyTrackPtr selectedTrack;
+			SpotifyAlbumPtr tracksAlbum;
+			//If isPlaying is true, then set the specific tracks cover
+			if (isPlaying)
+			{
+				SpotifyLinkPtr spotifyLink = sp_link_create_from_string(playingLink.c_str());
+				SpotifyPlaylistPtr spotifyPlaylist = sp_playlist_create(m_session, spotifyLink);
+				selectedTrack.m_ptr = sp_playlist_track(spotifyPlaylist, playlistIndex);
+				tracksAlbum.m_ptr = sp_track_album(selectedTrack);
+			}
+			else
+			{
+				selectedTrack.m_ptr = sp_playlist_track(m_playlist, playlistIndex);
+				tracksAlbum.m_ptr = sp_track_album(selectedTrack);
+			}
+
+			const byte * image_id = sp_album_cover(tracksAlbum, SP_IMAGE_SIZE_LARGE);
+
+			if (image_id != nullptr)
 			{
 				return load_image_locked(image_id, lock, p_abort);
 			}
@@ -273,13 +364,13 @@ public:
 		console::formatter() << "Opening track for loading album art from Spotify: " << p_path;
 
 		sp_session *session = SpotifySession::instance().get(p_abort);
-
 		SpotifyLockScope lock;
 
 		SpotifyLinkPtr link;
 		link.Attach(sp_link_create_from_string(p_path));
 
 		service_ptr_t<album_art_extractor_instance_spotify> instance;
+
 
 		if (link)
 		{

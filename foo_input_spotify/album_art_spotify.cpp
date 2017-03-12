@@ -2,7 +2,7 @@
 #include "util.h"
 #include "SpotifySession.h"
 #include "SpotifyPlusPlus.h"
-
+#include <future>
 template <typename T>
 void CALLBACK notifyEvent(T *result, void *userdata) {
 	HANDLE ev = userdata;
@@ -252,17 +252,17 @@ public:
 
 				SpotifyAwaitLoaded(m_playlist.m_ptr, lock, p_abort);
 			}
+
 			//Size of the playlist from m_playlist
 			int playlistSize = sp_playlist_num_tracks(m_playlist);
 			
 			//Ask main thread for the playlist index of the selected song
-			
-			int playlistIndex = -1;
+			std::promise<int> promisePlaylistIndex;
 			bool isPlaying = false;
 			std::string playingLink;
 
 			in_main_thread(
-				[&playlistIndex, playlistSize, &isPlaying, &playingLink]
+				[playlistSize, &isPlaying, &playingLink, &promisePlaylistIndex]
 			{
 				int indexValue = 0;
 
@@ -272,46 +272,42 @@ public:
 				
 				metadb_handle_ptr playingTrack;
 				playbackControl->get_now_playing(playingTrack);
-				
+				//Check if last thing clicked is a track. Used for showing played track
 				if (uiSelectionManager->get_selection_type() == contextmenu_item::caller_active_playlist_selection)
 				{
 					pfc::list_t<metadb_handle_ptr> selectedItems;
 					playlistManager->activeplaylist_get_selected_items(selectedItems);
 					if (selectedItems.get_size() <= 0 || selectedItems.get_item(0)->get_location().get_subsong_index() > playlistSize)
 					{
-						playlistIndex = 0;
+						promisePlaylistIndex.set_value(0);
 					}
 					else
 					{
 						indexValue = selectedItems.get_item(0)->get_location().get_subsong_index();
-						playlistIndex = indexValue;
+						promisePlaylistIndex.set_value(indexValue);
 					}
 				}
 				else if (playingTrack.get_ptr() != nullptr)
 				{
 					playingLink = playingTrack->get_path();
-					if (playingLink.find("spotify") == 0)
+					if (playingLink.find("spotify") == 0) //Check if its a spotify link so it can get the playlist link and get the track
 					{
-						playlistIndex = playingTrack->get_location().get_subsong_index();
 						isPlaying = true;
+						promisePlaylistIndex.set_value(playingTrack->get_location().get_subsong_index());
 					}
 					else
 					{
-						playlistIndex = 0;
+						promisePlaylistIndex.set_value(0);
 					}
 				}
 				else
 				{
-					playlistIndex = 0;
+					promisePlaylistIndex.set_value(0);
 				}
 			}
 			);
-			
-			//Shitty way to wait for change in value should use future object
-			while (playlistIndex == -1)
-			{
-				console::formatter() << "";
-			}
+			//wait for the value to be avalible
+			int playlistIndex = promisePlaylistIndex.get_future().get();
 
 			SpotifyTrackPtr selectedTrack;
 			SpotifyAlbumPtr tracksAlbum;
